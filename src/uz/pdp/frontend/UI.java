@@ -1,37 +1,42 @@
 package uz.pdp.frontend;
 
-import uz.pdp.dto.QuestionDTO;
-import uz.pdp.dto.UserDTO;
-import uz.pdp.entity.Answer;
-import uz.pdp.entity.Question;
-import uz.pdp.entity.User;
-import uz.pdp.enums.UserType;
-import uz.pdp.service.QuestionService;
-import uz.pdp.service.QuestionServiceImpl;
-import uz.pdp.service.UserService;
-import uz.pdp.service.UserServiceImpl;
+import uz.pdp.backend.dto.QuestionDTO;
+import uz.pdp.backend.dto.UserDTO;
+import uz.pdp.backend.entity.Answer;
+import uz.pdp.backend.entity.Option;
+import uz.pdp.backend.entity.Question;
+import uz.pdp.backend.entity.User;
+import uz.pdp.backend.enums.UserType;
+//import uz.pdp.backend.service.QuestionServiceImpl;
+import uz.pdp.backend.service.QuestionService;
+import uz.pdp.backend.service.UserService;
+//import uz.pdp.backend.service.UserServiceImpl;
 
 import java.util.*;
 
 
 public class UI {
+
     static Scanner textScanner = new Scanner(System.in);
     static Scanner numberScanner = new Scanner(System.in);
-    static UserService userService = new UserServiceImpl();
-    static QuestionService questionService = new QuestionServiceImpl();
-
-    static {
-        userService.create(new UserDTO("admin", "root123456", "root123456"));
-    }
-
+    static UserService userService = new UserService();
+    static QuestionService questionService = new QuestionService();
+    public static final String TEXT_GREEN = "\u001B[32m";
+    public static final String TEXT_RED = "\u001B[31m";
+    public static final String TEXT_RESET = "\u001B[0m";
+    static int totalNumberOfQuestions = 5;
     static Locale locale = Locale.ENGLISH;
     static User currentUser;
     static ResourceBundle resource = ResourceBundle.getBundle("lang", locale);
 
     public static void main(String[] args) {
+
         chooseLang();
         while (true) {
             mainMenu();
+            if (currentUser == null) {
+                return;
+            }
             if (currentUser.getUserType() == UserType.ADMIN) {
                 adminPanel();
             } else {
@@ -49,11 +54,12 @@ public class UI {
                         resource.getString("exit") + " - 4\n" +
                         resource.getString("choose_operation") + ": "
         );
-        switch (textScanner.next()) {
+        switch (textScanner.nextLine()) {
             case "1" -> signIn();
             case "2" -> signUpForm();
 //                case "3" -> chooseLang();
             default -> {
+                currentUser = null;
                 return;
             }
         }
@@ -66,7 +72,7 @@ public class UI {
                                 1 - English
                                 2 - Russian
                                 3 - Uzbek""");
-        locale = switch (textScanner.next()) {
+        locale = switch (textScanner.nextLine()) {
             case "1" -> Locale.ENGLISH;
             case "2" -> Locale.forLanguageTag("RU");
             default -> Locale.forLanguageTag("UZ");
@@ -76,14 +82,14 @@ public class UI {
 
     public static void signIn() {
         System.out.print(resource.getString("username") + ": ");
-        String username = textScanner.next();
+        String username = textScanner.nextLine();
         System.out.print(resource.getString("password") + ": ");
-        String password = textScanner.next();
+        String password = textScanner.nextLine();
         currentUser = userService.get(username, password);
         if (currentUser == null) {
             System.out.print(resource.getString("fail_message"));
         } else {
-            System.out.println(currentUser);
+            System.out.println("Welcome " + currentUser.getUsername());
         }
 
     }
@@ -92,14 +98,15 @@ public class UI {
         // TODO: 6/14/2023
 
         System.out.print(resource.getString("username") + ": ");
-        String username = textScanner.next();
+        String username = textScanner.nextLine();
         System.out.print(resource.getString("password") + ": ");
-        String password = textScanner.next();
+        String password = textScanner.nextLine();
         System.out.print(resource.getString("confirm_password") + ": ");
-        String confirmCassword = textScanner.next();
+        String confirmCassword = textScanner.nextLine();
         try {
-            UserDTO userDTO = new UserDTO(username, password, confirmCassword);
-            currentUser = userService.create(userDTO);
+            UserDTO userDTO = new UserDTO(username, password, confirmCassword, null);
+            userService.create(userDTO);
+            currentUser = userService.get(username, password);
             if (currentUser != null) {
                 System.out.println(resource.getString("success_message"));
             } else {
@@ -120,7 +127,7 @@ public class UI {
                     Delete Question: 3
                     Sign Out: 4
                     """);
-            switch (textScanner.next()) {
+            switch (textScanner.nextLine()) {
                 case "1" -> createQuestion();
                 case "2" -> editQuestion();
                 case "3" -> deleteQuestion();
@@ -147,7 +154,7 @@ public class UI {
             if (index < 0 || index > questionsSize) {
                 System.out.println("Wrong number");
             } else {
-                if (questionService.delete(questionService.getAll().get(index).getUuid())) {
+                if (questionService.delete(questionService.getAll().get(index).getId())) {
                     System.out.println("Successfully deleted");
                 } else {
                     System.out.println("Wrong operation");
@@ -175,19 +182,19 @@ public class UI {
                 System.out.print("Enter new Title: ");
                 String title = textScanner.nextLine();
                 if (title.length() == 0) {
-                    editedQuestion.setTitle(oldQuestion.getTitle());
+                    editedQuestion.setText(oldQuestion.getText());
                 } else {
-                    editedQuestion.setTitle(title);
+                    editedQuestion.setText(title);
                 }
-                List<Answer> answers = new ArrayList<>();
+                List<Option> options = new ArrayList<>();
                 String answer;
                 for (int i = 1; i < 5; i++) {
                     System.out.println("Enter " + i + "-answer: ");
                     answer = textScanner.nextLine();
                     if (answer.length() == 0) {
-                        answers.add(oldQuestion.getAnswers().get(i));
+                        options.add(oldQuestion.getOptions().get(i - 1));
                     }
-                    answers.add(new Answer(answer));
+                    options.add(new Option(answer));
                 }
                 while (true) {
                     System.out.println("Choose correct answer (1-4)");
@@ -195,21 +202,21 @@ public class UI {
                     if (correctAnswer < 0 || correctAnswer > 3) {
                         System.out.println("Wrong number");
                     } else {
-                        answers.get(correctAnswer).setCorrect(true);
+                        options.get(correctAnswer).setCorrect(true);
                         break;
                     }
                 }
-                editedQuestion.setAnswers(answers);
+                editedQuestion.setOptions(options);
                 break;
 
 
             }
         }
-        questionService.edit(editedQuestion);
+        questionService.update(editedQuestion);
     }
 
     private static void createQuestion() {
-        List<Answer> answers = new ArrayList<>();
+        List<Option> options = new ArrayList<>();
         String answer;
 //        textScanner.next();
         textScanner = new Scanner(System.in);
@@ -217,7 +224,7 @@ public class UI {
         String title = textScanner.nextLine();
         for (int i = 1; i < 5; i++) {
             System.out.println("Enter " + i + "-answer: ");
-            answers.add(new Answer(textScanner.nextLine()));
+            options.add(new Option(textScanner.nextLine()));
         }
         while (true) {
             System.out.println("Choose correct answer (1-4)");
@@ -225,15 +232,126 @@ public class UI {
             if (correctAnswer < 0 || correctAnswer > 3) {
                 System.out.println("Wrong number");
             } else {
-                answers.get(correctAnswer).setCorrect(true);
+                options.get(correctAnswer).setCorrect(true);
                 break;
             }
         }
-        QuestionDTO questionDTO = new QuestionDTO(title, answers);
+        QuestionDTO questionDTO = new QuestionDTO(title, options, currentUser.getId());
         questionService.create(questionDTO);
     }
 
     public static void userPage() {
+        while (true) {
+            System.out.print(
+                    resource.getString("history") + " - 1\n" +
+                            resource.getString("new_test") + " - 2\n" +
+                            resource.getString("edit_profile") + " - 3\n" +
+                            resource.getString("choose_language") + "- 4\n" +
+                            resource.getString("log_out") + " - 5\n" +
+                            resource.getString("choose_operation") + " : ");
+
+            switch (textScanner.nextLine()) {
+                case "1" -> history();
+                case "2" -> newTest();
+                case "3" -> editProfile();
+                case "4" -> chooseLang();
+
+                default -> {
+                    currentUser = null;
+                    return;
+                }
+            }
+        }
+    }
+
+    private static void editProfile() {
+
+    }
+
+    private static void newTest() {
+        List<Answer> answers = new ArrayList<>();
+
+
+        Question[] questions = new Question[totalNumberOfQuestions];
+        Question question;
+
+        for (int i = 0; i < totalNumberOfQuestions; i++) {
+
+            question = getRandomQuestion(questions);
+            questions[i] = question;
+
+            answers.add(answeringQuestion(question));
+        }
+        currentUser.setAnswers(answers);
+
+    }
+
+    private static Answer answeringQuestion(Question question) {
+        while (true) {
+            Answer answer = new Answer();
+            System.out.println(question.getText());
+//            question.getOptions().forEach(option -> System.out.println(option.getText()));
+            for (int i = 1; i < 5; i++) {
+                System.out.println(i + ") " + question.getOptions().get(i - 1).getText());
+            }
+            System.out.println("Choose correct answer (1-4)");
+            numberScanner = new Scanner(System.in);
+            int correctAnswer = numberScanner.nextInt() - 1;
+            if (correctAnswer < 0 || correctAnswer > 3) {
+                System.out.println("Wrong number");
+            } else {
+                answer.setQuestion(question);
+                answer.setSelectedOption(question.getOptions().get(correctAnswer));
+                return answer;
+            }
+        }
+    }
+
+    private static Question getRandomQuestion(Question[] questions) {
+        Random random = new Random();
+        boolean isEqual;
+        int randomNumber;
+        Question randomQuestion = null;
+        do {
+            isEqual = false;
+            randomNumber = random.nextInt(questionService.getAll().size());
+            randomQuestion = questionService.getAll().get(randomNumber);
+            for (Question question : questions) {
+                if (randomQuestion.equals(question)) {
+                    isEqual = true;
+                    break;
+                }
+            }
+        } while (isEqual);
+        return randomQuestion;
+    }
+
+    private static void history() {
+        if (currentUser.getAnswers() == null) {
+            System.out.println("There is no history");
+        } else {
+            List<Answer> answers = currentUser.getAnswers();
+            List<Option> options = null;
+            for (Answer answer : answers) {
+                System.out.println(answer.getQuestion().getText());
+                options = answer.getQuestion().getOptions();
+                if (answer.getSelectedOption().isCorrect()) {
+                    for (Option option : options) {
+                        System.out.println((option.isCorrect()) ? TEXT_GREEN + option.getText()+TEXT_RESET : option.getText());
+                    }
+                }else {
+                    for (Option option : options) {
+                        System.out.println(
+                                (option.isCorrect())
+                                        ? TEXT_GREEN + option.getText()+TEXT_RESET
+                                        :(option.equals(answer.getSelectedOption())
+                                                ?TEXT_RED+option.getText()+TEXT_RESET
+                                        : option.getText()));
+                    }
+                }
+
+            }
+        }
 
     }
 
