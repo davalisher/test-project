@@ -7,12 +7,12 @@ import java.util.List;
 import java.util.Optional;
 
 public abstract class BaseRepository<ENTITY extends BaseEntity, ID> implements Repository<ENTITY, ID> {
-    List<ENTITY> ENTITIES=new ArrayList<>();
+    List<ENTITY> ENTITIES = new ArrayList<>();
 
     @Override
     public Optional<ENTITY> getByID(ID id) {
         for (ENTITY entity : ENTITIES) {
-            if (entity.getId().equals(id)){
+            if (entity.getId().equals(id)) {
                 return Optional.of(entity);
             }
         }
@@ -33,7 +33,7 @@ public abstract class BaseRepository<ENTITY extends BaseEntity, ID> implements R
     @Override
     public ENTITY remove(ID id) {
         for (ENTITY entity : ENTITIES) {
-            if (entity.getId().equals(id)){
+            if (entity.getId().equals(id)) {
                 ENTITIES.remove(entity);
                 return entity;
             }
