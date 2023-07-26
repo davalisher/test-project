@@ -11,7 +11,9 @@ import java.util.UUID;
 @ToString(callSuper=true)
 @EqualsAndHashCode(callSuper=true)
 public class Option extends BaseEntity<UUID> { // javob varianti
-
+    {
+        id =UUID.randomUUID();
+    }
     private String text;
     private boolean correct;
 

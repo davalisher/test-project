@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Setter
 @ToString(of = {"id"})
 @EqualsAndHashCode
-public class BaseEntity<IDTYPE> {
+public abstract class BaseEntity<IDTYPE> {
     {
         createdAt=LocalDateTime.now();
         updatedAt=LocalDateTime.now();
@@ -19,4 +19,5 @@ public class BaseEntity<IDTYPE> {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     IDTYPE createdBy;
+    IDTYPE updatedBy;
 }

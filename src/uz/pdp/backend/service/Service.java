@@ -8,4 +8,5 @@ public interface Service<Entity, ID,DTO > {
     boolean update(Entity option);
     boolean delete(ID id);
     List<Entity> getAll();
+    int numberOfElements();
 }
